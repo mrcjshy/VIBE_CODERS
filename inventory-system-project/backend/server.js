@@ -8,6 +8,7 @@ dotenv.config();
 // Import database and models
 const db = require('./config/db');
 const { syncDatabase } = require('./models');
+const seedDatabase = require('./seeders/seedDatabase');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -37,8 +38,13 @@ const PORT = process.env.PORT || 5000;
 
 syncDatabase()
   .then(() => {
+    // Optionally seed database with initial data
+    // Uncomment the line below to seed on startup
+    // return seedDatabase();
+    
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
+      console.log('To seed the database with initial data, run: npm run seed');
     });
   })
   .catch(err => {
