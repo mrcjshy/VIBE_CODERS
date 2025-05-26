@@ -1,3 +1,5 @@
+// DARRYL YAM C. CANDILADA - BSIT -2-I
+
 const { 
   User, 
   Category, 
