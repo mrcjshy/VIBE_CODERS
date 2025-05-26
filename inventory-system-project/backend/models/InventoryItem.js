@@ -15,7 +15,55 @@ const InventoryItem = sequelize.define('InventoryItem', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  quantity: {
+  unitId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Units',
+      key: 'id'
+    }
+  },
+  supplierId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Suppliers',
+      key: 'id'
+    }
+  },
+  beginningQuantity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0
+    }
+  },
+  currentQuantity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0
+    }
+  },
+  totalInventory: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0
+    }
+  },
+  outQuantity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    validate: {
+      min: 0
+    }
+  },
+  spoilageQuantity: {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0,
@@ -25,7 +73,7 @@ const InventoryItem = sequelize.define('InventoryItem', {
   },
   price: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
+    allowNull: true,
     defaultValue: 0.00,
     validate: {
       min: 0
@@ -56,6 +104,14 @@ const InventoryItem = sequelize.define('InventoryItem', {
     type: DataTypes.INTEGER,
     allowNull: true,
     defaultValue: 5
+  },
+  expiryDate: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
   }
 });
 
