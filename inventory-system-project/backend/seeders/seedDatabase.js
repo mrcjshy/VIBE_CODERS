@@ -28,7 +28,7 @@ const seedDatabase = async () => {
         password: 'staff123',
         role: 'staff'
       }
-    });
+    }); 
 
     // Create units
     const units = [
