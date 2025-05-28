@@ -1,141 +1,285 @@
-Absolutely! Here’s a professional README template for your Inventory Management System project, tailored to your stack and features:
-
----
-
 # Inventory Management System
 
-A modern, responsive inventory management system for staff and managers, built with React (frontend) and Node.js/Express (backend).  
-**Designed for internal use by authorized personnel only.**
+A comprehensive inventory management system built with **Node.js**, **Express**, **PostgreSQL**, and **React**.
 
----
+## Features
 
-## 🚀 Features
+- **User Authentication & Authorization**: JWT-based authentication with role-based access control (Team Lead/Barista)
+- **Inventory Management**: Track products with beginning, in, out, spoilage, and remaining quantities
+- **Daily Inventory Tracking**: Monitor daily inventory changes and movements
+- **Transaction Logging**: Record all inventory movements with timestamps and user tracking
+- **Dashboard & Analytics**: Visual charts and statistics for inventory insights
+- **Settings Management**: Configurable system settings
+- **User Management**: Team Leads can manage user accounts and permissions
 
-- **Secure Login** for staff and managers (no public sign-up)
-- **Dashboard** with analytics and visualizations
-- **Inventory Management**: Add, edit, delete, and track products
-- **Stock Monitoring**: Real-time updates and low-stock alerts
-- **User Roles**: Admin/Manager and Staff access levels
-- **Reporting**: Generate and export inventory and sales reports
-- **Responsive UI**: Works on desktop, tablet, and mobile
-- **Modern Design**: Clean, professional interface with custom branding
+## Technology Stack
 
----
+### Backend
 
-## 🖥️ Tech Stack
+- **Node.js** with **Express.js**
+- **PostgreSQL** database
+- **Sequelize** ORM
+- **JWT** for authentication
+- **bcrypt** for password hashing
 
-- **Frontend:** React, Tailwind CSS
-- **Backend:** Node.js, Express
-- **Database:** (Add your DB, e.g., MongoDB, MySQL, PostgreSQL)
-- **Authentication:** JWT (or your method)
-- **Other:** (Add any other tools/libraries you use)
+### Frontend
 
----
+- **React** with hooks
+- **Tailwind CSS** for styling
+- **Recharts** for data visualization
+- **Axios** for API communication
 
-## 📦 Project Structure
+## Project Structure
 
 ```
 inventory-system-project/
-  backend/
-    config/
-    controllers/
-    middleware/
-    models/
-    routes/
-    utils/
-  frontend/
-    public/
-    src/
-      assets/
-      components/
-      context/
-      pages/
-      services/
-      utils/
-  package.json
-  README.md
+├── backend/
+│   ├── config/
+│   │   ├── db.js
+│   │   └── config.json
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── inventoryController.js
+│   │   ├── transactionController.js
+│   │   ├── userController.js
+│   │   ├── settingsController.js
+│   │   └── dailyInventoryController.js
+│   ├── middleware/
+│   │   └── auth.js
+│   ├── migrations/
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── InventoryItem.js
+│   │   ├── Transaction.js
+│   │   ├── Settings.js
+│   │   ├── DailyInventory.js
+│   │   └── index.js
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   ├── inventoryRoutes.js
+│   │   ├── transactionRoutes.js
+│   │   ├── userRoutes.js
+│   │   ├── settingsRoutes.js
+│   │   └── dailyInventoryRoutes.js
+│   ├── scripts/
+│   │   └── seed.js
+│   ├── seeders/
+│   │   └── seedDatabase.js
+│   ├── package.json
+│   └── server.js
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Sidebar.js
+│   │   │   └── InventoryTable.js
+│   │   ├── pages/
+│   │   │   ├── Login.js
+│   │   │   ├── Dashboard.js
+│   │   │   ├── Inventory.js
+│   │   │   ├── Statistics.js
+│   │   │   ├── Settings.js
+│   │   │   └── UserManagement.js
+│   │   ├── services/
+│   │   │   └── api.js
+│   │   ├── context/
+│   │   │   └── AuthContext.js
+│   │   └── App.js
+│   ├── package.json
+│   └── tailwind.config.js
+└── README.md
 ```
 
----
+## Installation & Setup
 
-## ⚡ Getting Started
+### Prerequisites
 
-### 1. **Clone the repository**
-```bash
-git clone <your-repo-url>
-cd inventory-system-project
-```
+- Node.js (v14 or higher)
+- PostgreSQL
+- npm or yarn
 
-### 2. **Install dependencies**
+### Backend Setup
 
-**Backend:**
-```bash
-cd backend
-npm install
-```
+1. Navigate to the backend directory:
 
-**Frontend:**
-```bash
-cd ../frontend
-npm install
-```
+   ```bash
+   cd inventory-system-project/backend
+   ```
 
-### 3. **Configure Environment Variables**
+2. Install dependencies:
 
-- Copy `.env.example` to `.env` in both `backend/` and `frontend/` (if needed)
-- Set your database URI, JWT secret, and other configs
+   ```bash
+   npm install
+   ```
 
-### 4. **Run the Application**
+3. Configure database in `config/config.json`:
 
-**Backend:**
-```bash
-cd backend
-npm start
-```
+   ```json
+   {
+     "development": {
+       "username": "your_username",
+       "password": "your_password",
+       "database": "inventory_db",
+       "host": "127.0.0.1",
+       "dialect": "postgres"
+     }
+   }
+   ```
 
-**Frontend:**
-```bash
-cd ../frontend
-npm start
-```
+4. Create the database:
 
-- The frontend will typically run at [http://localhost:3000](http://localhost:3000)
-- The backend will run at [http://localhost:5000](http://localhost:5000) (or your configured port)
+   ```bash
+   npx sequelize-cli db:create
+   ```
 
----
+5. Run migrations:
 
-## 👤 User Roles
+   ```bash
+   npx sequelize-cli db:migrate
+   ```
 
-- **Admin/Manager:** Full access to all features, can manage users and inventory
-- **Staff:** Limited access, can view and update inventory
+6. Seed the database:
 
-> **Note:** Only admins/managers can create new user accounts. There is no public sign-up.
+   ```bash
+   npm run seed
+   ```
 
----
+7. Start the server:
+   ```bash
+   npm start
+   ```
 
-## 📸 Screenshots
+### Frontend Setup
 
-![Login Page](./frontend/src/assets/login-screenshot.png)
-*Login page with analytics illustration and secure access*
+1. Navigate to the frontend directory:
 
----
+   ```bash
+   cd inventory-system-project/frontend
+   ```
 
-## 🛡️ Security
+2. Install dependencies:
 
-- No public registration; only authorized users can log in
-- Passwords are securely hashed
-- JWT-based authentication (or your method)
-- Input validation and error handling
+   ```bash
+   npm install
+   ```
 
----
+3. Start the development server:
+   ```bash
+   npm start
+   ```
 
+## Database Schema
 
-## 🙏 Acknowledgements
+### Tables
 
-- [React](https://reactjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Node.js](https://nodejs.org/)
-- [Express](https://expressjs.com/)
+- **Users** - User accounts with role-based access
+- **InventoryItems** - Product inventory with string-based categories and units
+- **Transactions** - Inventory movement records
+- **DailyInventories** - Daily inventory snapshots
+- **Settings** - System configuration settings
+
+### Key Features of the Schema
+
+- **String-based Categories**: Uses simple string categories (FOOD, BEVERAGES, SUPPLIES, etc.)
+- **String-based Units**: Uses simple string units (kg, L, pc, pkg, etc.)
+- **No Foreign Key Dependencies**: Simplified structure without complex relationships
+- **Audit Logging**: Tracks who made changes and when
+
+## API Endpoints
+
+### Authentication
+
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+- `GET /api/auth/profile` - Get user profile
+
+### Inventory Management
+
+- `GET /api/inventory` - Get all inventory items
+- `POST /api/inventory` - Create new item (Team Lead only)
+- `PUT /api/inventory/:id` - Update item (Team Lead only)
+- `DELETE /api/inventory/:id` - Delete item (Team Lead only)
+- `GET /api/inventory/low-stock` - Get low stock items
+
+### Daily Inventory
+
+- `GET /api/daily-inventory/generate` - Generate today's inventory
+- `GET /api/daily-inventory/:date` - Get daily inventory for date
+- `PUT /api/daily-inventory/:id` - Update daily inventory entry
+- `PUT /api/daily-inventory` - Bulk update entries
+
+### User Management (Team Lead only)
+
+- `GET /api/users` - Get all users
+- `POST /api/users` - Create user
+- `PUT /api/users/:id` - Update user
+- `PUT /api/users/:id/password` - Change user password
+- `DELETE /api/users/:id` - Delete user
+
+### Settings
+
+- `GET /api/settings` - Get all settings
+- `PUT /api/settings/:key` - Update setting
+
+## Default Users
+
+After seeding, the following users are available:
+
+- **Team Lead**: username: `teamlead`, password: `teamlead123`
+- **Barista**: username: `barista`, password: `barista123`
+
+## Features Overview
+
+### Dashboard
+
+- Overview of total items in stock
+- Low stock alerts
+- Today's transaction summary
+- Quick access to main functions
+
+### Inventory Management
+
+- Add, edit, and delete inventory items
+- Track beginning, in, out, spoilage, and remaining quantities
+- String-based categories and units for simplicity
+- Low stock monitoring
+
+### Daily Inventory
+
+- Generate daily inventory snapshots
+- Track daily movements and changes
+- Bulk edit capabilities
+- Historical tracking
+
+### User Management (Team Lead Only)
+
+- Create and manage user accounts
+- Change user passwords
+- Role-based access control
+- User activity tracking
+
+### Analytics & Reports
+
+- Visual charts and graphs
+- Inventory movement tracking
+- Category-wise distribution
+- Stock level monitoring
+
+## Security Features
+
+- JWT-based authentication
+- Password hashing with bcrypt
+- Role-based access control
+- Input validation and sanitization
+- Audit logging for changes
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 
 
