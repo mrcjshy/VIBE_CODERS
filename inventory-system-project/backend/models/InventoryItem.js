@@ -11,27 +11,11 @@ const InventoryItem = sequelize.define('InventoryItem', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  description: {
-    type: DataTypes.TEXT,
-    allowNull: true
+  unit: {
+    type: DataTypes.STRING,
+    allowNull: false
   },
-  unitId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'Units',
-      key: 'id'
-    }
-  },
-  supplierId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'Suppliers',
-      key: 'id'
-    }
-  },
-  beginningQuantity: {
+  beginning: {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0,
@@ -39,7 +23,7 @@ const InventoryItem = sequelize.define('InventoryItem', {
       min: 0
     }
   },
-  currentQuantity: {
+  in: {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0,
@@ -50,12 +34,9 @@ const InventoryItem = sequelize.define('InventoryItem', {
   totalInventory: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    defaultValue: 0,
-    validate: {
-      min: 0
-    }
+    defaultValue: 0
   },
-  outQuantity: {
+  out: {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0,
@@ -63,7 +44,7 @@ const InventoryItem = sequelize.define('InventoryItem', {
       min: 0
     }
   },
-  spoilageQuantity: {
+  spoilage: {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0,
@@ -71,47 +52,26 @@ const InventoryItem = sequelize.define('InventoryItem', {
       min: 0
     }
   },
-  price: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0.00,
-    validate: {
-      min: 0
-    }
-  },
-  categoryId: {
+  remaining: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: {
-      model: 'Categories',
-      key: 'id'
-    }
+    defaultValue: 0
   },
-  sku: {
+  category: {
     type: DataTypes.STRING,
-    allowNull: true,
-    unique: true
-  },
-  location: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  lastRestocked: {
-    type: DataTypes.DATE,
-    allowNull: true
-  },
-  minStockLevel: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    defaultValue: 5
-  },
-  expiryDate: {
-    type: DataTypes.DATE,
-    allowNull: true
+    allowNull: false
   },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  }
+}, {
+  hooks: {
+    beforeSave: (item) => {
+      // Auto-calculate totalInventory and remaining
+      item.totalInventory = (item.beginning || 0) + (item.in || 0);
+      item.remaining = item.totalInventory - (item.out || 0) - (item.spoilage || 0);
+    }
   }
 });
 

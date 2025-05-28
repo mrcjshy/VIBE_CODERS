@@ -7,6 +7,9 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
+import Statistics from './pages/Statistics';
+import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -52,6 +55,33 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Inventory />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/statistics" 
+              element={
+                <ProtectedRoute>
+                  <Statistics />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/users" 
+              element={
+                <ProtectedRoute>
+                  <UserManagement />
                 </ProtectedRoute>
               } 
             />

@@ -8,6 +8,7 @@ router.use(authenticateToken);
 
 // Get routes
 router.get('/', inventoryController.getAllItems);
+router.get('/by-date', inventoryController.getInventoryByDate);
 router.get('/low-stock', inventoryController.getLowStockItems);
 router.get('/:id', inventoryController.getItemById);
 

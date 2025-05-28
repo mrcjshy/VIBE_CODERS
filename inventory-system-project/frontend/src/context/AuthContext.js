@@ -33,15 +33,22 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setError(null);
+      console.log('AuthContext: Making login API call');
       const response = await authService.login(credentials);
+      console.log('AuthContext: Login API response:', response);
+      
       const { token, user } = response.data;
       
       // Save token to localStorage
       localStorage.setItem('token', token);
       setUser(user);
+      console.log('AuthContext: Login successful, user set:', user);
       return user;
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      console.error('AuthContext: Login error:', err);
+      const errorMessage = err.response?.data?.message || 'Login failed';
+      console.log('AuthContext: Setting error:', errorMessage);
+      setError(errorMessage);
       throw err;
     }
   };

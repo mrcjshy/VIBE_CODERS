@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import analyticsImage from '../assets/3D illustration showing analytics.png';
-import baabaaLogo from '../assets/baabaa_logo.png';
+// Using restored images from public folder
+const analyticsImage = "/data_analytics_image.png";
+const baabaaLogo = "/baa_baa_login_logo.png";
 
 // Reusable Input Field Component
-const InputField = ({ id, name, type, placeholder, value, onChange, icon }) => {
+const InputField = ({ id, name, type, placeholder, value, onChange, icon, showPasswordToggle, onTogglePassword, showPassword }) => {
   const getIcon = () => {
     switch (icon) {
       case 'email':
@@ -25,6 +26,23 @@ const InputField = ({ id, name, type, placeholder, value, onChange, icon }) => {
     }
   };
 
+  const getPasswordToggleIcon = () => {
+    if (showPassword) {
+      return (
+        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      );
+    }
+  };
+
   return (
     <div className="relative">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -33,13 +51,24 @@ const InputField = ({ id, name, type, placeholder, value, onChange, icon }) => {
       <input
         id={id}
         name={name}
-        type={type}
+        type={showPasswordToggle ? (showPassword ? 'text' : 'password') : type}
         required
-        className="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 bg-gray-50 focus:bg-white"
+        className={`w-full pl-10 ${showPasswordToggle ? 'pr-12' : 'pr-4'} py-2.5 sm:py-3 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 bg-gray-50 focus:bg-white`}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
       />
+      {showPasswordToggle && (
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+          <button
+            type="button"
+            className="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition duration-200"
+            onClick={onTogglePassword}
+          >
+            {getPasswordToggleIcon()}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -88,7 +117,7 @@ const IllustrationSection = () => {
 };
 
 // Right Section - Login Form Component
-const LoginForm = ({ formData, formError, isLoading, handleChange, handleSubmit }) => {
+const LoginForm = ({ formData, formError, isLoading, handleChange, handleSubmit, showPassword, handleTogglePassword }) => {
   return (
     <div className="w-full md:w-1/2 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-white min-h-screen md:min-h-0 relative">
       {/* Vertical Line - Not full length, positioned in center */}
@@ -140,6 +169,9 @@ const LoginForm = ({ formData, formError, isLoading, handleChange, handleSubmit 
               value={formData.password}
               onChange={handleChange}
               icon="password"
+              showPasswordToggle={true}
+              onTogglePassword={handleTogglePassword}
+              showPassword={showPassword}
             />
           </div>
 
@@ -195,6 +227,7 @@ const Login = () => {
   });
   const [formError, setFormError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -205,6 +238,10 @@ const Login = () => {
       ...formData,
       [name]: value
     });
+  };
+
+  const handleTogglePassword = () => {
+    setShowPassword(!showPassword);
   };
 
   const handleSubmit = async (e) => {
@@ -219,10 +256,27 @@ const Login = () => {
 
     try {
       setIsLoading(true);
+      console.log('Attempting login with:', { username: formData.username, password: '***' });
+      
       await login(formData);
+      console.log('Login successful, navigating to dashboard');
       navigate('/dashboard');
     } catch (error) {
-      setFormError(error.response?.data?.message || 'Login failed. Please try again.');
+      console.error('Login error caught:', error);
+      
+      // Extract error message from different possible error structures
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      console.log('Setting form error:', errorMessage);
+      setFormError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -237,6 +291,8 @@ const Login = () => {
         isLoading={isLoading}
         handleChange={handleChange}
         handleSubmit={handleSubmit}
+        showPassword={showPassword}
+        handleTogglePassword={handleTogglePassword}
       />
     </LoginLayout>
   );

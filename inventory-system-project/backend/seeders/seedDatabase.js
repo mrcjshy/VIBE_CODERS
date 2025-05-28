@@ -2,161 +2,152 @@
 
 const { 
   User, 
-  Category, 
   InventoryItem, 
-  Unit, 
-  Supplier, 
+  Settings,
   Transaction 
 } = require('../models');
+const bcrypt = require('bcrypt');
 
 const seedDatabase = async () => {
   try {
-    // Create admin and staff users
+    console.log('Starting database seeding...');
+
+    // Create admin user
     const adminUser = await User.findOrCreate({
-      where: { username: 'admin' },
+      where: { username: 'teamlead' },
       defaults: {
-        username: 'admin',
-        email: 'admin@bubbletea.com',
-        password: 'admin123',
-        role: 'admin'
+        username: 'teamlead',
+        email: 'teamlead@inventory.com',
+        password: 'teamlead123',
+        role: 'teamlead'
       }
     });
 
+    // Create staff user
     const staffUser = await User.findOrCreate({
-      where: { username: 'staff' },
+      where: { username: 'barista' },
       defaults: {
-        username: 'staff',
-        email: 'staff@bubbletea.com',
-        password: 'staff123',
-        role: 'staff'
-      }
-    }); 
-
-    // Create units
-    const units = [
-      { name: 'pack', abbreviation: 'pack' },
-      { name: 'bottle', abbreviation: 'bottle' },
-      { name: 'canister', abbreviation: 'canister' },
-      { name: 'can', abbreviation: 'can' },
-      { name: 'liter', abbreviation: 'l' },
-      { name: 'gallon', abbreviation: 'gallon' },
-      { name: 'piece', abbreviation: 'pc' },
-      { name: 'sachet', abbreviation: 'sachet' },
-      { name: 'gram', abbreviation: 'g' },
-      { name: 'roll', abbreviation: 'roll' },
-      { name: 'bag', abbreviation: 'bag' },
-      { name: 'stick', abbreviation: 'stick' }
-    ];
-
-    for (const unit of units) {
-      await Unit.findOrCreate({
-        where: { name: unit.name },
-        defaults: unit
-      });
-    }
-
-    // Create categories
-    const categories = [
-      { name: 'TEAS & COFFEE', description: 'Tea and coffee products' },
-      { name: 'SYRUPS', description: 'Flavoring syrups' },
-      { name: 'PUREES', description: 'Fruit purees' },
-      { name: 'DAIRY & POWDER', description: 'Dairy products and powders' },
-      { name: 'SINKERS', description: 'Bubble tea sinkers and toppings' },
-      { name: 'OTHER EQUIPMENTS', description: 'Store equipment and supplies' },
-      { name: 'GEL SAUCES', description: 'Gel and sauce toppings' },
-      { name: 'OTHERS', description: 'Other miscellaneous items' },
-      { name: 'CUPS/STRAW/TISSUE ETC', description: 'Cups, straws, and disposables' },
-      { name: 'TWINNINGS', description: 'Twinnings tea products' }
-    ];
-
-    for (const category of categories) {
-      await Category.findOrCreate({
-        where: { name: category.name },
-        defaults: category
-      });
-    }
-
-    // Create a sample supplier
-    await Supplier.findOrCreate({
-      where: { name: 'Main Supplier' },
-      defaults: {
-        name: 'Main Supplier',
-        contactPerson: 'John Doe',
-        phone: '+1234567890',
-        email: 'supplier@example.com',
-        address: '123 Supplier Street'
+        username: 'barista',
+        email: 'barista@inventory.com',
+        password: 'barista123',
+        role: 'barista'
       }
     });
 
-    // Get created records for relationships
-    const teaCategory = await Category.findOne({ where: { name: 'TEAS & COFFEE' } });
-    const syrupCategory = await Category.findOne({ where: { name: 'SYRUPS' } });
-    const pureeCategory = await Category.findOne({ where: { name: 'PUREES' } });
-    const dairyCategory = await Category.findOne({ where: { name: 'DAIRY & POWDER' } });
-    const cupsCategory = await Category.findOne({ where: { name: 'CUPS/STRAW/TISSUE ETC' } });
-
-    const packUnit = await Unit.findOne({ where: { name: 'pack' } });
-    const bottleUnit = await Unit.findOne({ where: { name: 'bottle' } });
-    const canisterUnit = await Unit.findOne({ where: { name: 'canister' } });
-    const canUnit = await Unit.findOne({ where: { name: 'can' } });
-    const pieceUnit = await Unit.findOne({ where: { name: 'piece' } });
-
-    const supplier = await Supplier.findOne({ where: { name: 'Main Supplier' } });
-
-    // Create sample inventory items
+    // Create sample inventory items (no foreign key relationships needed)
     const sampleItems = [
-      // Teas & Coffee
-      { name: 'Thai Tea Premium', categoryId: teaCategory.id, unitId: packUnit.id },
-      { name: 'Thai Green Tea', categoryId: teaCategory.id, unitId: packUnit.id },
-      { name: 'Full Tea', categoryId: teaCategory.id, unitId: packUnit.id },
-      { name: 'Half Tea', categoryId: teaCategory.id, unitId: packUnit.id },
-      { name: 'Thai Coffee', categoryId: teaCategory.id, unitId: packUnit.id },
-
-      // Syrups
-      { name: 'Fructose Syrup', categoryId: syrupCategory.id, unitId: bottleUnit.id },
-      { name: 'Lemon Syrup', categoryId: syrupCategory.id, unitId: bottleUnit.id },
-      { name: 'Wintermelon Syrup', categoryId: syrupCategory.id, unitId: bottleUnit.id },
-      { name: 'Passion Fruit Syrup', categoryId: syrupCategory.id, unitId: bottleUnit.id },
-      { name: 'Lychee Syrup', categoryId: syrupCategory.id, unitId: bottleUnit.id },
-
-      // Purees
-      { name: 'Blueberry Puree', categoryId: pureeCategory.id, unitId: canisterUnit.id },
-      { name: 'Banana Puree', categoryId: pureeCategory.id, unitId: canisterUnit.id },
-      { name: 'Ube Puree', categoryId: pureeCategory.id, unitId: canisterUnit.id },
-
-      // Dairy & Powder
-      { name: 'Condensed Milk', categoryId: dairyCategory.id, unitId: canUnit.id },
-      { name: 'Evaporated Milk', categoryId: dairyCategory.id, unitId: canUnit.id },
-      { name: 'Creamer Powder Milk Mixture', categoryId: dairyCategory.id, unitId: packUnit.id },
-
-      // Cups/Straws/Tissue
-      { name: '500ml Frosted Cups', categoryId: cupsCategory.id, unitId: pieceUnit.id },
-      { name: '700ml Frosted Cups', categoryId: cupsCategory.id, unitId: pieceUnit.id },
-      { name: 'Boba Straw', categoryId: cupsCategory.id, unitId: pieceUnit.id }
+      {
+        name: 'Rice',
+        unit: 'kg',
+        category: 'FOOD',
+        beginning: 100,
+        in: 50,
+        out: 30,
+        spoilage: 5,
+        isActive: true
+      },
+      {
+        name: 'Cooking Oil',
+        unit: 'L',
+        category: 'FOOD',
+        beginning: 50,
+        in: 20,
+        out: 15,
+        spoilage: 2,
+        isActive: true
+      },
+      {
+        name: 'Paper Towels',
+        unit: 'pc',
+        category: 'SUPPLIES',
+        beginning: 200,
+        in: 100,
+        out: 50,
+        spoilage: 0,
+        isActive: true
+      },
+      {
+        name: 'Coffee',
+        unit: 'kg',
+        category: 'BEVERAGES',
+        beginning: 25,
+        in: 10,
+        out: 8,
+        spoilage: 1,
+        isActive: true
+      },
+      {
+        name: 'Napkins',
+        unit: 'pkg',
+        category: 'SUPPLIES',
+        beginning: 150,
+        in: 75,
+        out: 40,
+        spoilage: 0,
+        isActive: true
+      },
+      {
+        name: 'Flour',
+        unit: 'kg',
+        category: 'FOOD',
+        beginning: 80,
+        in: 30,
+        out: 25,
+        spoilage: 3,
+        isActive: true
+      }
     ];
 
-    for (const item of sampleItems) {
+    for (const itemData of sampleItems) {
+      // Calculate totalInventory and remaining
+      const totalInventory = itemData.beginning + itemData.in;
+      const remaining = totalInventory - itemData.out - itemData.spoilage;
+
       await InventoryItem.findOrCreate({
-        where: { name: item.name },
+        where: { name: itemData.name },
         defaults: {
-          ...item,
-          supplierId: supplier.id,
-          beginningQuantity: 0,
-          currentQuantity: 0,
-          totalInventory: 0,
-          outQuantity: 0,
-          spoilageQuantity: 0,
-          minStockLevel: 5
+          ...itemData,
+          totalInventory,
+          remaining
         }
       });
     }
 
-    console.log('Database seeded successfully!');
-    console.log('Admin User: username: admin, password: admin123');
-    console.log('Staff User: username: staff, password: staff123');
+    // Create sample settings
+    const settings = [
+      {
+        key: 'lowStockThreshold',
+        value: '10',
+        type: 'number',
+        description: 'Low stock threshold for inventory items'
+      },
+      {
+        key: 'companyName',
+        value: 'Inventory Management System',
+        type: 'string',
+        description: 'Company name displayed in the application'
+      },
+      {
+        key: 'enableNotifications',
+        value: 'true',
+        type: 'boolean',
+        description: 'Enable system notifications'
+      }
+    ];
 
+    for (const settingData of settings) {
+      await Settings.findOrCreate({
+        where: { key: settingData.key },
+        defaults: settingData
+      });
+    }
+
+    console.log('Database seeding completed successfully!');
+    console.log('Admin User: username: teamlead, password: teamlead123');
+    console.log('Staff User: username: barista, password: barista123');
   } catch (error) {
     console.error('Error seeding database:', error);
+    throw error;
   }
 };
 

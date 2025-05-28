@@ -41,10 +41,10 @@ const authenticateToken = async (req, res, next) => {
 
 // Middleware to check if user is admin
 const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && req.user.role === 'teamlead') {
     next();
   } else {
-    res.status(403).json({ message: 'Access denied. Admin role required.' });
+    res.status(403).json({ message: 'Access denied. Team Lead role required.' });
   }
 };
 
