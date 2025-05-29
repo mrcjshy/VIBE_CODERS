@@ -62,14 +62,20 @@ const Settings = () => {
     try {
       setSaving(true);
       
-      // Prepare settings for API
-      const settingsToSave = Object.entries(settings).map(([key, value]) => ({
-        key,
-        value: String(value),
-        type: typeof value === 'boolean' ? 'boolean' : 'number'
-      }));
+      // Convert settings to the format expected by the backend
+      const settingsToSave = {};
+      Object.entries(settings).forEach(([key, value]) => {
+        settingsToSave[key] = {
+          value,
+          type: typeof value === 'boolean' ? 'boolean' : 'number',
+          description: `${key} setting`
+        };
+      });
 
       await settingsService.updateSettings(settingsToSave);
+      
+      // Refresh settings after save
+      await fetchSettings();
       
       setSuccessMessage('Settings saved successfully!');
       setError(null);
@@ -109,7 +115,7 @@ const Settings = () => {
   }
 
   // Check if user is admin
-  if (user?.role !== 'teamlead') {
+  if (user?.role !== 'admin' && user?.role !== 'teamlead') {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar />
@@ -121,7 +127,7 @@ const Settings = () => {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-            <p className="text-gray-600">Only Team Leads can access settings.</p>
+            <p className="text-gray-600">Only Team Leads and Admins can access settings.</p>
           </div>
         </div>
       </div>

@@ -96,60 +96,228 @@ const getAllTransactions = async (req, res) => {
 // Get dashboard statistics
 const getDashboardStats = async (req, res) => {
   try {
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    // Allow date parameter to sync with Product section, default to today
+    const { date } = req.query;
+    const targetDate = date ? new Date(date) : new Date();
+    const targetDateStr = targetDate.toISOString().split('T')[0];
+    
+    console.log(`Dashboard stats using date: ${targetDateStr}`);
 
-    // Get today's transactions by type
-    const todayStats = await Transaction.findAll({
+    // Get all transactions for today by type with eager loading of InventoryItem
+    const dayTransactions = await Transaction.findAll({
       where: {
+        type: { [Op.in]: ['in', 'out', 'spoilage'] },
         date: {
-          [Op.between]: [startOfDay, endOfDay]
+          [Op.between]: [
+            new Date(targetDateStr + 'T00:00:00.000Z'),
+            new Date(targetDateStr + 'T23:59:59.999Z')
+          ]
         }
       },
-      attributes: [
-        'type',
-        [sequelize.fn('SUM', sequelize.col('quantity')), 'total']
-      ],
-      group: ['type']
+      include: [{
+        model: InventoryItem,
+        attributes: ['id', 'name', 'category', 'unit']
+      }],
+      order: [['createdAt', 'DESC']]
     });
 
-    // Format today's stats
+    // Calculate totals by type
     const statsMap = {
       in: 0,
       out: 0,
       spoilage: 0
     };
 
-    todayStats.forEach(stat => {
-      if (statsMap.hasOwnProperty(stat.type)) {
-        statsMap[stat.type] = parseInt(stat.dataValues.total) || 0;
+    // Track items received today
+    const itemsReceivedToday = [];
+
+    dayTransactions.forEach(transaction => {
+      if (statsMap.hasOwnProperty(transaction.type)) {
+        statsMap[transaction.type] += parseInt(transaction.quantity) || 0;
+        
+        // Add to items received if it's an IN transaction
+        if (transaction.type === 'in') {
+          const existingItem = itemsReceivedToday.find(item => item.id === transaction.InventoryItem.id);
+          if (existingItem) {
+            existingItem.quantity += transaction.quantity;
+          } else {
+            itemsReceivedToday.push({
+              id: transaction.InventoryItem.id,
+              name: transaction.InventoryItem.name,
+              category: transaction.InventoryItem.category,
+              unit: transaction.InventoryItem.unit,
+              quantity: transaction.quantity,
+              time: transaction.createdAt
+            });
+          }
+        }
       }
     });
 
-    // Get total items in stock
-    const totalItems = await InventoryItem.sum('remaining', {
-      where: { isActive: true }
-    }) || 0;
+    // Debug log the transactions found
+    console.log(`Found ${dayTransactions.length} transactions for ${targetDateStr}:`, 
+      dayTransactions.map(t => `${t.type}: ${t.quantity}`));
+    console.log('Calculated stats:', statsMap);
+    console.log('Items received today:', itemsReceivedToday.map(item => `${item.name}: ${item.quantity}`));
 
-    // Get low stock items (items with remaining < 20% of total inventory)
-    const lowStockItems = await InventoryItem.findAll({
-      where: {
-        isActive: true,
-        [Op.and]: [
-          sequelize.literal('CAST("totalInventory" AS INTEGER) > 0'),
-          sequelize.literal('CAST("remaining" AS FLOAT) / CAST("totalInventory" AS FLOAT) <= 0.2')
-        ]
-      }
+    // Get total items in stock by calculating from target date inventory
+    const inventoryItems = await InventoryItem.findAll({
+      where: { isActive: true },
+      order: [['category', 'ASC'], ['name', 'ASC']]
     });
+
+    let totalItemsInStock = 0;
+    const lowStockItems = [];
+    const lowStockThreshold = 0.2;
+
+    // Helper function to calculate remaining for a specific date (same as Product section)
+    const calculateRemainingForDate = async (inventoryItemId, date) => {
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const transactions = await Transaction.findAll({
+        where: {
+          inventoryItemId,
+          date: {
+            [Op.lte]: new Date(dateStr + 'T23:59:59.999Z')
+          }
+        },
+        order: [['date', 'ASC'], ['createdAt', 'ASC']]
+      });
+
+      if (transactions.length === 0) {
+        return null;
+      }
+
+      const item = await InventoryItem.findByPk(inventoryItemId);
+      let balance = item.beginning || 0;
+
+      transactions.forEach(transaction => {
+        switch (transaction.type) {
+          case 'beginning':
+            balance = transaction.quantity;
+            break;
+          case 'in':
+            balance += transaction.quantity;
+            break;
+          case 'out':
+          case 'spoilage':
+            balance -= transaction.quantity;
+            break;
+        }
+      });
+
+      return Math.max(0, balance);
+    };
+
+    // Calculate current stock for each item using target date (EXACT same logic as Product section)
+    for (const item of inventoryItems) {
+      let dayBeginning = 0;
+      
+      // Check if there's a manual beginning transaction for target date
+      const dayBeginningTransaction = await Transaction.findOne({
+        where: {
+          inventoryItemId: item.id,
+          type: 'beginning',
+          date: {
+            [Op.between]: [
+              new Date(targetDateStr + 'T00:00:00.000Z'),
+              new Date(targetDateStr + 'T23:59:59.999Z')
+            ]
+          }
+        },
+        order: [['createdAt', 'DESC']]
+      });
+
+      // Auto-calculate from previous day's remaining
+      const previousDate = new Date(targetDate);
+      previousDate.setDate(previousDate.getDate() - 1);
+      
+      const autoCalculatedBeginning = await calculateRemainingForDate(item.id, previousDate);
+      const fallbackBeginning = autoCalculatedBeginning !== null ? autoCalculatedBeginning : (item.beginning || 0);
+
+      if (dayBeginningTransaction) {
+        if (dayBeginningTransaction.quantity === fallbackBeginning) {
+          dayBeginning = fallbackBeginning;
+        } else {
+          dayBeginning = dayBeginningTransaction.quantity;
+        }
+      } else {
+        dayBeginning = fallbackBeginning;
+      }
+
+      // Get target date's other transactions (excluding beginning)
+      const dayTransactions = await Transaction.findAll({
+        where: {
+          inventoryItemId: item.id,
+          type: { [Op.in]: ['in', 'out', 'spoilage'] },
+          date: {
+            [Op.between]: [
+              new Date(targetDateStr + 'T00:00:00.000Z'),
+              new Date(targetDateStr + 'T23:59:59.999Z')
+            ]
+          }
+        }
+      });
+
+      let dayIn = 0;
+      let dayOut = 0;
+      let daySpoilage = 0;
+
+      dayTransactions.forEach(transaction => {
+        switch (transaction.type) {
+          case 'in':
+            dayIn += transaction.quantity;
+            break;
+          case 'out':
+            dayOut += transaction.quantity;
+            break;
+          case 'spoilage':
+            daySpoilage += transaction.quantity;
+            break;
+        }
+      });
+
+      // Calculate current values for target date (SAME as Product section)
+      const totalInventory = dayBeginning + dayIn;
+      const remaining = Math.max(0, totalInventory - dayOut - daySpoilage);
+      
+      // Add to total stock
+      totalItemsInStock += remaining;
+      
+      // ENHANCED Low stock detection - detect items showing as low in Product section
+      const isOutOfStock = remaining === 0;
+      const isLowPercentage = totalInventory > 0 && (remaining / totalInventory) <= lowStockThreshold;
+      const isLowAbsolute = totalInventory > 0 && remaining <= 10;
+      const hasNoDataForDate = totalInventory === 0 && dayTransactions.length === 0 && !dayBeginningTransaction;
+      
+      const isLowStock = isOutOfStock || isLowPercentage || isLowAbsolute || hasNoDataForDate;
+      
+      if (isLowStock) {
+        lowStockItems.push({
+          id: item.id,
+          name: item.name,
+          unit: item.unit,
+          category: item.category,
+          remaining,
+          totalInventory,
+          isActive: item.isActive,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt
+        });
+      }
+    }
 
     res.status(200).json({
-      totalItemsInStock: totalItems,
+      totalItemsInStock,
       lowStockCount: lowStockItems.length,
       lowStockItems: lowStockItems,
-      todayStats: statsMap
+      todayStats: statsMap,
+      itemsReceivedToday: itemsReceivedToday.sort((a, b) => b.time - a.time), // Most recent first
+      dataDate: targetDateStr,
+      lowStockDate: targetDateStr
     });
   } catch (error) {
+    console.error('Error in getDashboardStats:', error);
     res.status(500).json({ 
       message: 'Error fetching dashboard stats', 
       error: error.message 
@@ -667,6 +835,207 @@ const getSystemDate = async (req, res) => {
   }
 };
 
+// Update inventory for a specific date (replaces existing transactions)
+const updateInventoryForDate = async (req, res) => {
+  try {
+    const { inventoryItemId, date, beginning, inQuantity, outQuantity, spoilage, notes } = req.body;
+    const userId = req.user.id;
+
+    // Validate required fields
+    if (!inventoryItemId || !date) {
+      return res.status(400).json({
+        message: 'inventoryItemId and date are required'
+      });
+    }
+
+    // Parse and validate date
+    const transactionDate = new Date(date);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    if (transactionDate > today) {
+      return res.status(400).json({
+        message: 'Transaction date cannot be in the future'
+      });
+    }
+
+    // Get the inventory item
+    const inventoryItem = await InventoryItem.findByPk(inventoryItemId);
+    if (!inventoryItem) {
+      return res.status(404).json({
+        message: 'Inventory item not found'
+      });
+    }
+
+    const targetDateStr = transactionDate.toISOString().split('T')[0];
+    
+    // Delete existing transactions for this item and date
+    await Transaction.destroy({
+      where: {
+        inventoryItemId,
+        date: {
+          [Op.between]: [
+            new Date(targetDateStr + 'T00:00:00.000Z'),
+            new Date(targetDateStr + 'T23:59:59.999Z')
+          ]
+        }
+      }
+    });
+
+    // Create new transactions for the provided values (allow 0 values)
+    const newTransactions = [];
+
+    // Create beginning transaction if provided (manual override)
+    if (beginning !== undefined && beginning !== null) {
+      const beginningQty = parseInt(beginning) || 0;
+      const beginningTransaction = await Transaction.create({
+        inventoryItemId,
+        userId,
+        type: 'beginning',
+        quantity: beginningQty,
+        notes: notes || `Beginning balance for ${targetDateStr}`,
+        reason: 'Beginning balance',
+        date: transactionDate
+      });
+      newTransactions.push(beginningTransaction);
+    }
+
+    // Create in transaction if provided (allow 0 values)
+    if (inQuantity !== undefined && inQuantity !== null) {
+      const inQty = parseInt(inQuantity) || 0;
+      if (inQty > 0) { // Only create transaction for positive values
+        const inTransaction = await Transaction.create({
+          inventoryItemId,
+          userId,
+          type: 'in',
+          quantity: inQty,
+          notes: notes || `Stock in for ${targetDateStr}`,
+          reason: 'Stock in',
+          date: transactionDate
+        });
+        newTransactions.push(inTransaction);
+      }
+    }
+
+    // Create out transaction if provided (allow 0 values)
+    if (outQuantity !== undefined && outQuantity !== null) {
+      const outQty = parseInt(outQuantity) || 0;
+      if (outQty > 0) { // Only create transaction for positive values
+        const outTransaction = await Transaction.create({
+          inventoryItemId,
+          userId,
+          type: 'out',
+          quantity: outQty,
+          notes: notes || `Stock out for ${targetDateStr}`,
+          reason: 'Stock out',
+          date: transactionDate
+        });
+        newTransactions.push(outTransaction);
+      }
+    }
+
+    // Create spoilage transaction if provided (allow 0 values)
+    if (spoilage !== undefined && spoilage !== null) {
+      const spoilageQty = parseInt(spoilage) || 0;
+      if (spoilageQty > 0) { // Only create transaction for positive values
+        const spoilageTransaction = await Transaction.create({
+          inventoryItemId,
+          userId,
+          type: 'spoilage',
+          quantity: spoilageQty,
+          notes: notes || `Spoilage for ${targetDateStr}`,
+          reason: 'Spoilage',
+          date: transactionDate
+        });
+        newTransactions.push(spoilageTransaction);
+      }
+    }
+
+    // Fetch the created transactions with related data
+    const createdTransactions = await Transaction.findAll({
+      where: {
+        id: newTransactions.map(t => t.id)
+      },
+      include: [
+        {
+          model: InventoryItem,
+          attributes: ['id', 'name', 'category', 'unit']
+        },
+        {
+          model: User,
+          attributes: ['id', 'username']
+        }
+      ]
+    });
+
+    res.status(200).json({
+      message: 'Inventory updated successfully',
+      transactions: createdTransactions,
+      date: targetDateStr
+    });
+
+  } catch (error) {
+    console.error('Error updating inventory for date:', error);
+    res.status(500).json({ 
+      message: 'Error updating inventory', 
+      error: error.message 
+    });
+  }
+};
+
+// Reset inventory quantity
+const resetInventoryQuantity = async (req, res) => {
+  try {
+    const { inventoryItemId } = req.body;
+    const userId = req.user.id;
+
+    // Get the inventory item
+    const inventoryItem = await InventoryItem.findByPk(inventoryItemId);
+    if (!inventoryItem) {
+      return res.status(404).json({
+        message: 'Inventory item not found'
+      });
+    }
+
+    // Use transaction to ensure data consistency
+    await sequelize.transaction(async (t) => {
+      // Create a beginning transaction with 0 quantity
+      await Transaction.create({
+        inventoryItemId,
+        userId,
+        type: 'beginning',
+        quantity: 0,
+        notes: 'Inventory reset to 0',
+        reason: 'Reset inventory',
+        date: new Date()
+      }, { transaction: t });
+
+      // Update the inventory item
+      await inventoryItem.update({
+        remaining: 0,
+        totalInventory: 0,
+        updatedBy: userId
+      }, { transaction: t });
+    });
+
+    // Return the updated inventory item
+    const updatedItem = await InventoryItem.findByPk(inventoryItemId, {
+      attributes: ['id', 'name', 'category', 'unit', 'remaining', 'totalInventory']
+    });
+
+    res.status(200).json({
+      message: 'Inventory quantity reset successfully',
+      item: updatedItem
+    });
+  } catch (error) {
+    console.error('Error resetting inventory quantity:', error);
+    res.status(500).json({ 
+      message: 'Error resetting inventory quantity', 
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   getAllTransactions,
   getDashboardStats,
@@ -674,5 +1043,7 @@ module.exports = {
   createTransaction,
   createInventoryTransaction,
   getTopOutgoingProducts,
-  getSystemDate
+  getSystemDate,
+  updateInventoryForDate,
+  resetInventoryQuantity
 }; 

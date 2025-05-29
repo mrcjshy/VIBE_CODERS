@@ -139,43 +139,95 @@ const updateSettings = async (req, res) => {
   try {
     const { settings } = req.body;
     
+    if (!settings || typeof settings !== 'object') {
+      return res.status(400).json({
+        message: 'Invalid settings format. Expected an object of settings.'
+      });
+    }
+
     const updates = [];
+    const updatedSettings = {};
     
     for (const [key, settingData] of Object.entries(settings)) {
       const { value, type = 'string', description } = settingData;
       
-      // Convert value to string for storage
-      let stringValue = value;
-      if (type === 'json') {
-        stringValue = JSON.stringify(value);
-      } else {
-        stringValue = String(value);
+      // Validate setting type
+      if (!['string', 'number', 'boolean', 'json'].includes(type)) {
+        return res.status(400).json({
+          message: `Invalid type "${type}" for setting "${key}". Must be string, number, boolean, or json.`
+        });
       }
 
+      // Convert and validate value based on type
+      let stringValue;
+      try {
+        switch (type) {
+          case 'boolean':
+            stringValue = String(Boolean(value));
+            break;
+          case 'number':
+            const num = Number(value);
+            if (isNaN(num)) {
+              throw new Error(`Invalid number value for setting "${key}"`);
+            }
+            stringValue = String(num);
+            break;
+          case 'json':
+            stringValue = JSON.stringify(value);
+            break;
+          default:
+            stringValue = String(value);
+        }
+      } catch (error) {
+        return res.status(400).json({
+          message: `Error processing value for setting "${key}": ${error.message}`
+        });
+      }
+
+      // Find or create the setting
       const [setting] = await Settings.findOrCreate({
         where: { key },
         defaults: {
           key,
           value: stringValue,
           type,
-          description
+          description: description || `${key} setting`
         }
       });
 
+      // Update if it exists
       await setting.update({
         value: stringValue,
         type,
-        description
+        description: description || setting.description || `${key} setting`
       });
 
+      // Store the processed value for response
+      let processedValue;
+      switch (type) {
+        case 'number':
+          processedValue = parseFloat(stringValue);
+          break;
+        case 'boolean':
+          processedValue = stringValue === 'true';
+          break;
+        case 'json':
+          processedValue = JSON.parse(stringValue);
+          break;
+        default:
+          processedValue = stringValue;
+      }
+      
+      updatedSettings[key] = processedValue;
       updates.push(key);
     }
 
     res.status(200).json({
       message: 'Settings updated successfully',
-      updatedSettings: updates
+      settings: updatedSettings
     });
   } catch (error) {
+    console.error('Error updating settings:', error);
     res.status(500).json({ 
       message: 'Error updating settings', 
       error: error.message 

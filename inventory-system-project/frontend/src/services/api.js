@@ -86,12 +86,13 @@ export const authService = {
 // Inventory services
 export const inventoryService = {
   getAllItems: () => api.get('/inventory'),
+  getInventoryByDate: (date) => api.get('/inventory/by-date', { params: { date } }),
+  getLowStockItems: () => api.get('/inventory/low-stock'),
   getItemById: (id) => api.get(`/inventory/${id}`),
   createItem: (itemData) => api.post('/inventory', itemData),
   updateItem: (id, itemData) => api.put(`/inventory/${id}`, itemData),
   deleteItem: (id) => api.delete(`/inventory/${id}`),
-  getLowStockItems: () => api.get('/inventory/low-stock'),
-  getInventoryByDate: (date) => api.get('/inventory/by-date', { params: { date } })
+  updateInventoryWithTransactions: (updateData) => api.post('/inventory/update-inventory', updateData)
 };
 
 // Category services
@@ -106,12 +107,13 @@ export const categoryService = {
 // Transaction services
 export const transactionService = {
   getAllTransactions: (params) => api.get('/transactions', { params }),
-  getDashboardStats: () => api.get('/transactions/dashboard'),
-  getStatistics: (params) => api.get('/transactions/statistics', { params }),
   createTransaction: (transactionData) => api.post('/transactions', transactionData),
   createInventoryTransaction: (transactionData) => api.post('/transactions/inventory', transactionData),
+  getDashboardStats: (date) => api.get('/transactions/dashboard', { params: date ? { date } : {} }),
+  getStatistics: (params) => api.get('/transactions/statistics', { params }),
   getTopOutgoingProducts: (params) => api.get('/transactions/top-outgoing', { params }),
-  getSystemDate: () => api.get('/transactions/system-date')
+  updateInventoryForDate: (data) => api.post('/transactions/update-inventory', data),
+  resetQuantity: (inventoryItemId) => api.post('/transactions/reset-quantity', { inventoryItemId })
 };
 
 // Settings services

@@ -14,6 +14,7 @@ router.get('/:id', inventoryController.getItemById);
 
 // Post routes - admin only
 router.post('/', isAdmin, inventoryController.createItem);
+router.post('/update-inventory', inventoryController.updateInventoryWithTransactions);
 
 // Put routes - admin only
 router.put('/:id', isAdmin, inventoryController.updateItem);

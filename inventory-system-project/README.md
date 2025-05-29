@@ -43,10 +43,12 @@ inventory-system-project/
 │   │   ├── transactionController.js
 │   │   ├── userController.js
 │   │   ├── settingsController.js
-│   │   └── dailyInventoryController.js
+│   │   ├── dailyInventoryController.js
+│   │   └── categoryController.js
 │   ├── middleware/
 │   │   └── auth.js
 │   ├── migrations/
+│   │   └── [database migration files]
 │   ├── models/
 │   │   ├── User.js
 │   │   ├── InventoryItem.js
@@ -60,21 +62,29 @@ inventory-system-project/
 │   │   ├── transactionRoutes.js
 │   │   ├── userRoutes.js
 │   │   ├── settingsRoutes.js
-│   │   └── dailyInventoryRoutes.js
+│   │   ├── dailyInventoryRoutes.js
+│   │   └── categoryRoutes.js
 │   ├── scripts/
 │   │   └── seed.js
 │   ├── seeders/
-│   │   └── seedDatabase.js
+│   │   ├── seedDatabase.js
+│   │   └── 20240305000000-demo-inventory-items.js
 │   ├── package.json
 │   └── server.js
 ├── frontend/
 │   ├── public/
+│   │   ├── baa_baa_login_logo.png
+│   │   ├── data_analytics_image.png
+│   │   ├── elephant baa baa logo.png
+│   │   ├── index.html
+│   │   ├── manifest.json
+│   │   └── robots.txt
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── Sidebar.js
-│   │   │   └── InventoryTable.js
+│   │   │   └── Sidebar.js
 │   │   ├── pages/
 │   │   │   ├── Login.js
+│   │   │   ├── Register.js
 │   │   │   ├── Dashboard.js
 │   │   │   ├── Inventory.js
 │   │   │   ├── Statistics.js
@@ -84,11 +94,32 @@ inventory-system-project/
 │   │   │   └── api.js
 │   │   ├── context/
 │   │   │   └── AuthContext.js
-│   │   └── App.js
+│   │   ├── App.js
+│   │   ├── index.js
+│   │   └── index.css
 │   ├── package.json
-│   └── tailwind.config.js
-└── README.md
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   └── .gitignore
+├── README.md
+├── TRANSACTION_DATE_FEATURE.md
+└── .gitignore
 ```
+
+## Categories & Inventory Items
+
+The system includes comprehensive product categories:
+
+- **FOOD**: Rice, Beans, Flour, Oil, Sugar, Salt, etc.
+- **BEVERAGES**: Tea bags, Coffee beans, Milk powder, Juice, etc.
+- **DAIRY & POWDER**: Milk powder, Ice cream powder, Cream cheese, etc.
+- **SINKERS**: Tapioca Pearl, Grass Jelly, Nata Original, Coffee Jelly, Fruit Jelly, Egg pudding
+- **SAUCE**: Ketchup, Soy sauce, Hot sauce, Vinegar, etc.
+- **SNACKS**: Crackers, Cookies, Chips, etc.
+- **SUPPLIES**: Paper cups, Plastic spoons, Napkins, etc.
+- **MEAT**: Chicken, Beef, Pork, Fish, etc.
+- **VEGETABLES**: Onions, Garlic, Tomatoes, etc.
+- **FROZEN**: Frozen vegetables, Ice cream, etc.
 
 ## Installation & Setup
 
@@ -174,7 +205,7 @@ inventory-system-project/
 
 - **Users** - User accounts with role-based access
 - **InventoryItems** - Product inventory with string-based categories and units
-- **Transactions** - Inventory movement records
+- **Transactions** - Inventory movement records with date tracking
 - **DailyInventories** - Daily inventory snapshots
 - **Settings** - System configuration settings
 
@@ -183,6 +214,7 @@ inventory-system-project/
 - **String-based Categories**: Uses simple string categories (FOOD, BEVERAGES, SUPPLIES, etc.)
 - **String-based Units**: Uses simple string units (kg, L, pc, pkg, etc.)
 - **No Foreign Key Dependencies**: Simplified structure without complex relationships
+- **Date-based Tracking**: Full support for historical transaction dates
 - **Audit Logging**: Tracks who made changes and when
 
 ## API Endpoints

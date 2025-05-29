@@ -9,6 +9,7 @@ const CATEGORIES = {
   SYRUPS: 'SYRUPS',
   PUREES: 'PUREES',
   DAIRY_AND_POWDER: 'DAIRY & POWDER',
+  SINKERS: 'SINKERS',
   OTHER_EQUIPMENTS: 'OTHER EQUIPMENTS',
   GH_SAUCES: 'GH SAUCES',
   GH_POWDERS: 'GH POWDERS',
@@ -23,6 +24,7 @@ const CATEGORY_ORDER = [
   'SYRUPS', 
   'PUREES',
   'DAIRY & POWDER',
+  'SINKERS',
   'OTHER EQUIPMENTS',
   'GH SAUCES',
   'GH POWDERS',
@@ -87,9 +89,19 @@ const Inventory = () => {
   };
 
   const validateInput = (value, field) => {
-    if (value === '' || value === null) return field === 'beginning' ? 0 : '';
+    // Allow empty string or null to represent zero
+    if (value === '' || value === null) {
+      return 0;
+    }
+    
+    // Parse the input value
     const num = parseInt(value);
-    if (isNaN(num) || num < 0) return field === 'beginning' ? 0 : '';
+    
+    // If not a valid number or negative, return 0
+    if (isNaN(num) || num < 0) {
+      return 0;
+    }
+    
     return num;
   };
 
@@ -107,21 +119,28 @@ const Inventory = () => {
   };
 
   const handleInputChange = (itemId, field, value) => {
-    // Allow editing for any date, not just today
+    // Validate input
     const validatedValue = validateInput(value, field);
     
     // Update local state immediately for responsiveness
     setInventoryData(prevData => 
       prevData.map(item => {
         if (item.id === itemId) {
+          // Create updated item with new value
           const updatedItem = { 
             ...item, 
             [field]: validatedValue 
           };
           
-          // Recalculate derived values
-          updatedItem.totalInventory = calculateTotalInventory(updatedItem);
-          updatedItem.remaining = calculateRemaining(updatedItem);
+          // Calculate new total inventory
+          const beginning = field === 'beginning' ? validatedValue : (updatedItem.beginning || 0);
+          const inValue = field === 'in' ? validatedValue : (updatedItem.in || 0);
+          updatedItem.totalInventory = beginning + inValue;
+          
+          // Calculate new remaining
+          const out = field === 'out' ? validatedValue : (updatedItem.out || 0);
+          const spoilage = field === 'spoilage' ? validatedValue : (updatedItem.spoilage || 0);
+          updatedItem.remaining = Math.max(0, updatedItem.totalInventory - out - spoilage);
           
           return updatedItem;
         }
@@ -135,7 +154,12 @@ const Inventory = () => {
       [itemId]: {
         ...prev[itemId],
         itemId,
-        [field]: validatedValue
+        [field]: validatedValue,
+        // Include all fields to ensure complete update
+        beginning: field === 'beginning' ? validatedValue : (prev[itemId]?.beginning ?? inventoryData.find(i => i.id === itemId)?.beginning ?? 0),
+        in: field === 'in' ? validatedValue : (prev[itemId]?.in ?? inventoryData.find(i => i.id === itemId)?.in ?? 0),
+        out: field === 'out' ? validatedValue : (prev[itemId]?.out ?? inventoryData.find(i => i.id === itemId)?.out ?? 0),
+        spoilage: field === 'spoilage' ? validatedValue : (prev[itemId]?.spoilage ?? inventoryData.find(i => i.id === itemId)?.spoilage ?? 0)
       }
     }));
   };
@@ -144,69 +168,43 @@ const Inventory = () => {
     if (Object.keys(pendingChanges).length === 0) return;
 
     setSaving(true);
+    const failedUpdates = [];
+
     try {
-      // Create transactions for each pending change
+      // Update inventory for each item
       for (const [itemId, changes] of Object.entries(pendingChanges)) {
         const item = inventoryData.find(i => i.id === parseInt(itemId));
         if (!item) continue;
 
-        // Create transactions for beginning changes (use 'beginning' type)
-        if (changes.beginning !== undefined) {
-          await transactionService.createInventoryTransaction({
-            inventoryItemId: parseInt(itemId),
-            type: 'beginning',
-            quantity: changes.beginning,
-            date: selectedDate,
-            notes: `Beginning balance set for ${selectedDate}`
-          });
-        }
+        // Prepare the update data
+        const updateData = {
+          inventoryItemId: parseInt(itemId),
+          date: selectedDate,
+          notes: `Inventory update for ${selectedDate}`,
+          beginning: changes.beginning !== undefined ? changes.beginning : (item.beginning || 0),
+          inQuantity: changes.in !== undefined ? changes.in : (item.in || 0),
+          outQuantity: changes.out !== undefined ? changes.out : (item.out || 0),
+          spoilage: changes.spoilage !== undefined ? changes.spoilage : (item.spoilage || 0)
+        };
 
-        // Create transactions for in, out, spoilage changes
-        if (changes.in && changes.in > 0) {
-          await transactionService.createInventoryTransaction({
-            inventoryItemId: parseInt(itemId),
-            type: 'in',
-            quantity: changes.in,
-            date: selectedDate,
-            notes: `Stock in for ${selectedDate}`
-          });
-        }
-
-        if (changes.out && changes.out > 0) {
-          await transactionService.createInventoryTransaction({
-            inventoryItemId: parseInt(itemId),
-            type: 'out',
-            quantity: changes.out,
-            date: selectedDate,
-            notes: `Stock out for ${selectedDate}`
-          });
-        }
-
-        if (changes.spoilage && changes.spoilage > 0) {
-          await transactionService.createInventoryTransaction({
-            inventoryItemId: parseInt(itemId),
-            type: 'spoilage',
-            quantity: changes.spoilage,
-            date: selectedDate,
-            notes: `Spoilage for ${selectedDate}`
-          });
+        try {
+          await inventoryService.updateInventoryWithTransactions(updateData);
+        } catch (error) {
+          console.error(`Failed to update ${item.name}:`, error);
+          failedUpdates.push(item.name);
         }
       }
 
-      // Clear pending changes and refresh data
-      setPendingChanges({});
-      await fetchInventoryData();
-      
-      // If we edited a historical date, also refresh today's data to update beginning values
-      const today = new Date().toISOString().split('T')[0];
-      if (selectedDate !== today) {
-        // Fetch today's data to see updated beginning values
-        const todayResponse = await inventoryService.getInventoryByDate(today);
-        console.log('Today\'s data updated after historical change:', todayResponse.data);
+      if (failedUpdates.length > 0) {
+        setError(`Failed to update some items: ${failedUpdates.join(', ')}`);
+      } else {
+        // Clear pending changes and refresh data
+        setPendingChanges({});
+        setError(null);
+        await fetchInventoryData();
       }
-      
-      setError(null);
     } catch (error) {
+      console.error('Save changes error:', error);
       setError('Failed to save changes: ' + error.message);
     } finally {
       setSaving(false);
@@ -446,6 +444,19 @@ const Inventory = () => {
             </div>
           </div>
         )}
+
+        {/* Info Notice */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-center">
+            <svg className="w-5 h-5 text-blue-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm text-blue-800">
+              <strong>Smart Beginning Sync:</strong> Beginning values automatically show yesterday's remaining quantities, 
+              but you can edit them if needed. Editing today's beginning won't affect yesterday's data.
+            </p>
+          </div>
+        </div>
 
         {/* Inventory Table */}
         <div className="space-y-6">

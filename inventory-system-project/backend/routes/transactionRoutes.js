@@ -7,7 +7,9 @@ const {
   createTransaction,
   createInventoryTransaction,
   getTopOutgoingProducts,
-  getSystemDate
+  getSystemDate,
+  updateInventoryForDate,
+  resetInventoryQuantity
 } = require('../controllers/transactionController');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -34,5 +36,11 @@ router.post('/', createTransaction);
 
 // POST /api/transactions/inventory - Create a new inventory transaction (date-based)
 router.post('/inventory', createInventoryTransaction);
+
+// POST /api/transactions/update-inventory - Update inventory for a specific date
+router.post('/update-inventory', updateInventoryForDate);
+
+// POST /api/transactions/reset-quantity - Reset inventory quantity
+router.post('/reset-quantity', resetInventoryQuantity);
 
 module.exports = router; 
