@@ -7,11 +7,11 @@ dotenv.config();
 
 // Database connection configuration
 const sequelize = new Sequelize(
-  process.env.DB_NAME || 'neondb',
-  process.env.DB_USER || 'neondb_owner',
-  process.env.DB_PASSWORD || 'npg_KMy0gUTjiVZ6',
+  process.env.DB_NAME || 'inventory_db',
+  process.env.DB_USER || 'postgres',
+  process.env.DB_PASSWORD || '09057644429',
   {
-    host: process.env.DB_HOST || 'ep-autumn-rain-a1sfkj8i-pooler.ap-southeast-1.aws.neon.tech',
+    host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
     logging: false, // Set to console.log to see SQL queries
@@ -20,12 +20,6 @@ const sequelize = new Sequelize(
       min: 0,
       acquire: 30000,
       idle: 10000
-    },
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
     }
   }
 );
@@ -42,4 +36,4 @@ const testConnection = async () => {
 
 testConnection();
 
-module.exports = sequelize;
+module.exports = sequelize; 
